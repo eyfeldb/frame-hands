@@ -1,0 +1,62 @@
+--- a/scripts/main.gd
++++ b/scripts/main.gd
+@@ -69,0 +70,6 @@
++	if not OS.get_environment("FRAME_UME_VIEW").is_empty():
++		var provider = load("res://scripts/frame_provider/provider.gd").new()
++		provider.hands=hands
++		provider.camera=xr_camera if xr_active else camera
++		add_child(provider)
++		XRServer.reference_frame_changed.connect(provider.invalidate)
+@@ -75 +81 @@
+-		if not active and xr_active and not performance.autoplay:
++		if not active and xr_active and not performance.autoplay and not hands.visual_grace_for(performance.hand):
+@@ -82,0 +89,5 @@
++	if OS.is_stdout_verbose():
++		var library_summary: Array = []
++		for song in songs:
++			library_summary.append({"title":song.title,"notes":song.notes.size(),"duration":song.duration})
++		print("FRAME_PIANO_READY " + JSON.stringify({"xr":xr_active,"engine":Engine.get_version_info().string,"library":library_summary}))
+@@ -211 +222,2 @@
+-	if xr_active and performance.playing and not performance.autoplay and not hands.ready_for(performance.hand):
++	var awaiting_observation := xr_active and performance.playing and not performance.autoplay and not hands.ready_for(performance.hand)
++	if awaiting_observation and not hands.visual_grace_for(performance.hand):
+@@ -214 +226,2 @@
+-	performance.advance(delta)
++	# During bounded visual grace, hold score time without scoring or opening the menu.
++	if not awaiting_observation:performance.advance(delta)
+--- a/scripts/hand_input.gd
++++ b/scripts/hand_input.gd
+@@ -19,0 +20 @@
++var visual_frames := {} # Presentation-only: never used for contact or gestures.
+@@ -50,0 +52,19 @@
++
++func submit_visual(side: String, joints: PackedVector3Array, confidence: PackedFloat32Array, remaining_seconds: float, opacity: float = 1.0) -> void:
++	if side not in ["left","right"] or joints.size()!=26 or confidence.size()!=26: return
++	if not is_finite(remaining_seconds) or remaining_seconds<=0 or remaining_seconds>.220: return
++	if not is_finite(opacity) or opacity<0 or opacity>1: return
++	for point in joints:
++		if not point.is_finite(): return
++	for value in confidence:
++		if not is_finite(value) or value<0 or value>1: return
++	visual_frames[side]={"joints":joints,"confidence":confidence,"until":Time.get_ticks_usec()*1e-6+remaining_seconds,"opacity":opacity}
++
++func visual_grace_for(hand: String) -> bool:
++	var now:=Time.get_ticks_usec()*1e-6
++	for side in (["left","right"] if hand=="both" else [hand]):
++		if not ready_for(side) and (not visual_frames.has(side) or now>=visual_frames[side].until):return false
++	return true
++
++func clear_visual(side: String) -> void:
++	visual_frames.erase(side)
+@@ -123,0 +144,9 @@
++	var visual_opacity := 1.0
++	if visual_frames.has(side):
++		var frame: Dictionary=visual_frames[side]
++		if Time.get_ticks_usec()*1e-6<frame.until:
++			points=PackedVector3Array()
++			for point in frame.joints:points.append(origin.global_transform*XRServer.get_reference_frame()*point)
++			confidence=frame.confidence
++			visual_opacity=frame.opacity
++		else:visual_frames.erase(side)
+@@ -132,0 +162 @@
++	models[side].surface.transparency=1.0-visual_opacity

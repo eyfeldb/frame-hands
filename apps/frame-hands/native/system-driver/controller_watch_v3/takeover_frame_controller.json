@@ -1,0 +1,271 @@
+{
+  "action_manifest_version": 0,
+  "alias_info": {},
+  "bindings": {
+    "/actions/takeover": {
+      "sources": [
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/a"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/b"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/x"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/y"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/menu"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/view"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/bumper"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/trigger"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/grip"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/thumbstick"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/dpad_up"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/dpad_down"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/dpad_left"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/left/input/dpad_right"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/a"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/b"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/x"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/y"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/menu"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/view"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/bumper"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/trigger"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/grip"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/thumbstick"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/dpad_up"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/dpad_down"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/dpad_left"
+        },
+        {
+          "inputs": {
+            "click": {
+              "output": "/actions/takeover/in/press"
+            }
+          },
+          "mode": "button",
+          "path": "/user/hand/right/input/dpad_right"
+        }
+      ],
+      "poses": [],
+      "haptics": [],
+      "chords": []
+    }
+  },
+  "category": "steamvr_input",
+  "controller_type": "frame_controller",
+  "description": "Every Frame controller button selects Controllers while Frame Hands is active",
+  "name": "Frame Hands takeover (frame_controller)",
+  "options": {},
+  "simulated_actions": []
+}

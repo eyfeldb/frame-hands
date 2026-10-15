@@ -1,0 +1,105 @@
+{
+  "jsonid": "input_profile",
+  "controller_type": "svl_hand_interaction_augmented",
+  "device_class": "TrackedDeviceClass_Controller",
+  "resource_root": "fh_skeletal",
+  "driver_name": "fh_skeletal",
+  "hand_priority": -1,
+  "input_bindingui_mode": "controller_handed",
+  "should_show_binding_errors": true,
+  "input_source": {
+    "/input/index_pinch": {
+      "type": "trigger",
+      "value": true,
+      "order": 1
+    },
+    "/input/middle_pinch": {
+      "type": "trigger",
+      "value": true,
+      "order": 1
+    },
+    "/input/ring_pinch": {
+      "type": "trigger",
+      "value": true,
+      "order": 1
+    },
+    "/input/pinky_pinch": {
+      "type": "trigger",
+      "value": true,
+      "order": 3
+    },
+    "/input/grip": {
+      "type": "trigger",
+      "value": true,
+      "click": true,
+      "order": 3
+    },
+    "/input/index_point": {
+      "type": "trigger",
+      "touch": true
+    },
+    "/input/trigger": {
+      "type": "trigger",
+      "click": true,
+      "value": true
+    },
+    "/input/a": {
+      "type": "button",
+      "click": true
+    },
+    "/input/b": {
+      "type": "button",
+      "click": true
+    },
+    "/input/application_menu": {
+      "type": "button",
+      "click": true
+    },
+    "/input/system": {
+      "type": "button",
+      "click": true,
+      "order": 0
+    },
+    "/input/joystick": {
+      "type": "joystick",
+      "click": true
+    },
+    "/input/navigation": {
+      "type": "button",
+      "click": true
+    },
+    "/input/skeleton/right": {
+      "type": "skeleton",
+      "side": "right",
+      "skeleton": "/skeleton/hand/right"
+    },
+    "/input/skeleton/left": {
+      "type": "skeleton",
+      "side": "left",
+      "skeleton": "/skeleton/hand/left"
+    },
+    "/pose/raw": {
+      "type": "pose"
+    },
+    "/pose/grip": {
+      "type": "pose"
+    },
+    "/pose/tip": {
+      "type": "pose"
+    },
+    "/output/haptic": {
+      "type": "vibration"
+    }
+  },
+  "default_bindings": [
+    {
+      "app_key": "openvr.component.vrcompositor",
+      "binding_url": "dashboard_link.json"
+    },
+    {
+      "app_key": "steam.app.2701700",
+      "binding_url": "maestro_link.json"
+    }
+  ],
+  "legacy_binding": "{fh_skeletal}/input/legacy_link.json"
+}

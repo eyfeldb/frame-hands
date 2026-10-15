@@ -1,0 +1,162 @@
+diff --git a/apps/frame-hands/native/fit_rig_pixels.h b/apps/frame-hands/native/fit_rig_pixels.h
+index 2a02134..8116543 100644
+--- a/apps/frame-hands/native/fit_rig_pixels.h
++++ b/apps/frame-hands/native/fit_rig_pixels.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include "fit_hand_rig.h"
+ #include "rig_bound_step.h"
++#include "rig_temporal_prior.h"
+ namespace fhn {
+ // Calibrated four-radial-coefficient KB fisheye projection. No inferred camera defaults.
+ struct RigCamera {
+@@ -59,9 +60,10 @@ struct PixelResidual {
+     double len()const{return std::sqrt(dot(*this));}
+ };
+ struct PixelFitResult {RigPose pose{};int observations=0,iterations=0,updates=0;bool sufficient=false;double initial_cost=0,cost=0,observed_rmse_px=0;};
+-inline PixelFitResult fit_rig_pixels(const HandRig& rig,const RigPose& seed,const std::array<RigCamera,2>& cams,const std::array<PixelObservation,21>& obs,RigFitOptions options={},int projection_mode=0,const std::array<double,20>* angle_reference=nullptr,bool resolve_bounds=false){
++inline PixelFitResult fit_rig_pixels(const HandRig& rig,const RigPose& seed,const std::array<RigCamera,2>& cams,const std::array<PixelObservation,21>& obs,RigFitOptions options={},int projection_mode=0,const std::array<double,20>* angle_reference=nullptr,bool resolve_bounds=false,const RigTemporalPrior* temporal=nullptr){
+     if(projection_mode<0||projection_mode>2)throw std::invalid_argument("Invalid projection derivative mode");
+     bool analytic_projection=projection_mode!=0;
++    if(temporal)temporal->validate(rig,seed.side);
+     const auto& prior=angle_reference?*angle_reference:seed.angles;
+     for(int i=0;i<20;++i)if(!std::isfinite(prior[i])||prior[i]<rig.joints[i].lower-1e-8||prior[i]>rig.joints[i].upper+1e-8)throw std::invalid_argument("Invalid angle prior reference");
+     if(options.iterations<1||options.iterations>100||!std::isfinite(options.huber)||options.huber<=0||!std::isfinite(options.angle_prior)||options.angle_prior<0)throw std::invalid_argument("Invalid fitting options");
+@@ -70,20 +72,24 @@ inline PixelFitResult fit_rig_pixels(const HandRig& rig,const RigPose& seed,cons
+     if(out.observations<6)return out;out.sufficient=true; // Count gate only, not an observability/visibility verdict.
+     auto residuals=[&](const std::array<V,21>& points,std::array<PixelResidual,21>& r){
+         for(int i=0;i<21;++i)for(int v=0;v<2;++v)if(obs[i].present[v]){V uv;if(!cams[v].project(points[i],uv))return false;r[i].v[v]=(uv-V{obs[i].point[v].x,obs[i].point[v].y,0})*(1/obs[i].sigma[v]);}return true;};
+-    auto cost=[&](const RigPose& p,const std::array<PixelResidual,21>& r){double value=0;for(auto& x:r){double n=x.len();value+=n<=options.huber?.5*n*n:options.huber*(n-.5*options.huber);}for(int i=0;i<20;++i){double d=p.angles[i]-prior[i];value+=.5*options.angle_prior*d*d;}return value;};
++    auto cost=[&](const RigPose& p,const std::array<PixelResidual,21>& r){double value=0;for(auto& x:r){double n=x.len();value+=n<=options.huber?.5*n*n:options.huber*(n-.5*options.huber);}for(int i=0;i<20;++i){double d=p.angles[i]-prior[i];value+=.5*options.angle_prior*d*d;}if(temporal)value+=temporal->cost(p);return value;};
+     std::array<PixelResidual,21> residual{};if(!residuals(points,residual))throw std::invalid_argument("Seed behind camera");
+     out.initial_cost=out.cost=cost(seed,residual);if(!std::isfinite(out.cost))throw std::invalid_argument("Unbounded pixel cost");double damping=.001;
+     for(int iteration=0;iteration<options.iterations;++iteration){out.iterations=iteration+1;double H[26][26]{},g[26]{};std::array<std::array<PixelResidual,21>,26> jac{};bool derivative_valid=true;
++        std::array<RigTemporalPrior::Residual,26> temporal_jac{};RigTemporalPrior::Residual temporal_r{};
++        if(temporal)temporal_r=temporal->residual(out.pose);
+         std::array<std::array<std::array<V,2>,2>,21> camera_jac{};
+         if(analytic_projection){for(int i=0;i<21;++i)for(int v=0;v<2;++v)if(obs[i].present[v]&&!cams[v].projection_jacobian(points[i],camera_jac[i][v]))derivative_valid=false;if(!derivative_valid)break;}
+         for(int j=0;j<26;++j){std::array<double,26>d{};double h=j<3?.01:1e-5;
+             if(j>=6&&out.pose.angles[j-6]+h>rig.joints[j-6].upper)h=-h;if(j>=6&&out.pose.angles[j-6]+h<rig.joints[j-6].lower)continue;
+             d[j]=h;auto trial=rig_step(rig,out.pose,d);auto y=rig.landmarks(trial.angles,trial.wrist,trial.side);std::array<PixelResidual,21> r{};
++            if(temporal){auto tr=temporal->residual(trial);for(int k=0;k<23;++k)temporal_jac[j][k]=(tr[k]-temporal_r[k])/h;}
+             if(analytic_projection&&!(projection_mode==2&&j<3)){for(int i=0;i<21;++i){V displacement=(y[i]-points[i])*(1/h);for(int v=0;v<2;++v)if(obs[i].present[v])jac[j][i].v[v]={camera_jac[i][v][0].dot(displacement)/obs[i].sigma[v],camera_jac[i][v][1].dot(displacement)/obs[i].sigma[v],0};}}
+             else{if(!residuals(y,r)){derivative_valid=false;break;}for(int i=0;i<21;++i)jac[j][i]=(r[i]-residual[i])*(1/h);}
+         }
+         if(!derivative_valid)break; // Retain last valid pose; caller must inspect residual quality.
+         for(int i=0;i<21;++i){auto r=residual[i];double n=r.len(),w=n>options.huber?options.huber/n:1.;for(int j=0;j<26;++j){g[j]+=w*jac[j][i].dot(r);for(int k=0;k<=j;++k)H[j][k]+=w*jac[j][i].dot(jac[k][i]);}}
++        if(temporal){double w=temporal->weight(temporal_r);for(int j=0;j<26;++j){g[j]+=w*RigTemporalPrior::dot(temporal_jac[j],temporal_r);for(int k=0;k<=j;++k)H[j][k]+=w*RigTemporalPrior::dot(temporal_jac[j],temporal_jac[k]);}}
+         for(int j=0;j<20;++j){H[j+6][j+6]+=options.angle_prior;g[j+6]+=options.angle_prior*(out.pose.angles[j]-prior[j]);}
+         for(int j=0;j<26;++j){for(int k=0;k<j;++k)H[k][j]=H[j][k];H[j][j]+=damping*std::max(1e-6,H[j][j]);g[j]=-g[j];}
+         std::array<double,26>d{};bool solved=resolve_bounds?rig_solve_feasible(H,g,rig,out.pose,d):rig_solve(H,g,d);if(!solved){damping*=10;continue;}double fraction=1.;for(int j=0;j<26;++j){double limit=j<3?20.:(j<6?.25:.35);if(std::abs(d[j])>limit)fraction=std::min(fraction,limit/std::abs(d[j]));}for(auto& x:d)x*=fraction;
+diff --git a/apps/frame-hands/native/probe_whole_pose_seed.cpp b/apps/frame-hands/native/probe_whole_pose_seed.cpp
+index 3bf4801..b0f67c0 100644
+--- a/apps/frame-hands/native/probe_whole_pose_seed.cpp
++++ b/apps/frame-hands/native/probe_whole_pose_seed.cpp
+@@ -5,11 +5,11 @@
+ #include <iomanip>
+ #include <chrono>
+ int main(int argc,char**argv){try{
+- if(argc!=8)return 2;std::ifstream generic(argv[1]),left(argv[2]),right(argv[3]),calibration(argv[4]),input(argv[5]),heads(argv[6]);
++ bool temporal=argc==9&&std::string(argv[8])=="--temporal";if(argc!=8&&!temporal)return 2;std::ifstream generic(argv[1]),left(argv[2]),right(argv[3]),calibration(argv[4]),input(argv[5]),heads(argv[6]);
+  if(!generic||!left||!right||!calibration||!input||!heads||std::ifstream(argv[7]).good())return 3;
+  const auto reference=fhn::HandRig::load(generic);std::array<fhn::HandRig,2> rigs{fhn::HandRig::load(left),fhn::HandRig::load(right)};
+  const auto cameras=fhn::load_rig_cameras(calibration);fhn::RigStage stage;std::ofstream out(argv[7]);out<<std::setprecision(17);
+- fhn::WholePoseFitter history;
++ fhn::WholePoseFitter history(temporal);
+  std::int64_t stamp;int source,side,count=0;
+  while(input>>stamp){if(!(input>>source>>side)||side<0||side>1)return 4;
+   std::array<fhn::RigObservation,21> points{};std::array<fhn::PixelObservation,21> pixels{};
+diff --git a/apps/frame-hands/native/probe_whole_pose_sequence.cpp b/apps/frame-hands/native/probe_whole_pose_sequence.cpp
+index afc8e38..0107ab6 100644
+--- a/apps/frame-hands/native/probe_whole_pose_sequence.cpp
++++ b/apps/frame-hands/native/probe_whole_pose_sequence.cpp
+@@ -5,10 +5,10 @@
+ #include <iomanip>
+ #include <random>
+ int main(int argc,char**argv){try{
+- if(argc!=6)return 2;std::ifstream l(argv[1]),r(argv[2]),g(argv[3]),c(argv[4]);if(std::ifstream(argv[5]).good())return 3;
++ bool temporal=argc==7&&std::string(argv[6])=="--temporal";if(argc!=6&&!temporal)return 2;std::ifstream l(argv[1]),r(argv[2]),g(argv[3]),c(argv[4]);if(std::ifstream(argv[5]).good())return 3;
+  std::array<fhn::HandRig,2> rigs{fhn::HandRig::load(l),fhn::HandRig::load(r)};auto reference=fhn::HandRig::load(g);auto cameras=fhn::load_rig_cameras(c);
+  std::ofstream out(argv[5]);out<<std::setprecision(17);std::mt19937 random(41872);std::normal_distribution<double> noise(0,1);int cases=0;
+- for(int mode=0;mode<4;++mode){fhn::RigStage stage;fhn::WholePoseFitter history;
++ for(int mode=0;mode<4;++mode){fhn::RigStage stage;fhn::WholePoseFitter history(temporal);
+   std::array<bool,2> last_valid{};std::array<std::array<fhn::V,21>,2> old_truth{};std::array<std::array<std::array<fhn::V,21>,2>,2> old_output{};
+   for(int frame=0;frame<120;++frame)for(int side=0;side<2;++side){
+    auto stamp=1000000000LL+frame*33333333LL+(mode==3&&frame>=80?150000000LL:0);int source=10+side+(mode==3&&frame>=90?10:0);
+@@ -31,7 +31,7 @@ int main(int argc,char**argv){try{
+    if(!baseline.initialized){history.clear(side);last_valid[side]=false;out<<side<<' '<<mode<<' '<<frame<<" 0 0 0 0 0 0 0 0 0\n";++cases;continue;}
+    bool head_valid=!(mode==3&&frame==75);
+    auto selected=history.refine(rigs[side],baseline.initial.pose,baseline.refined.fit,cameras,obs,pixels,stamp,source,head_valid?&head:nullptr);
+-   if(selected.fit.cost>baseline.refined.fit.cost)throw std::runtime_error("Objective regression");
++   if(!temporal&&selected.fit.cost>baseline.refined.fit.cost)throw std::runtime_error("Objective regression");
+    std::array<double,2> error{},motion{};
+    for(int variant=0;variant<2;++variant){auto p=variant?selected.fit.pose:baseline.refined.fit.pose;auto points=rigs[side].landmarks(p.angles,p.wrist,side);
+     for(int i=0;i<21;++i){points[i]=head.apply(points[i]);auto e=points[i]-truth_world[i];error[variant]+=e.dot(e);
+diff --git a/apps/frame-hands/native/whole_pose_fitter.h b/apps/frame-hands/native/whole_pose_fitter.h
+index ee695fb..e107a47 100644
+--- a/apps/frame-hands/native/whole_pose_fitter.h
++++ b/apps/frame-hands/native/whole_pose_fitter.h
+@@ -8,9 +8,11 @@ struct WholePoseResult {PixelFitResult fit{};bool eligible=false,used=false;doub
+ // a competitor. Capture-time head transforms must share the same world reference.
+ class WholePoseFitter {
+     struct History {bool valid=false;int source=-1;std::int64_t stamp=0;RigPose world{};};
++    bool temporal_=false;
+     std::array<History,2> history_{};
+     std::array<std::int64_t,2> last_stamp_{};
+ public:
++    explicit WholePoseFitter(bool temporal=false):temporal_(temporal){}
+     // Call on missing/ambiguous side, source disappearance or reference-space reset.
+     // Timestamp guards deliberately survive clearing history.
+     void clear(int side){if(side<0||side>1)throw std::invalid_argument("Invalid history side");history_[side]={};}
+@@ -35,9 +37,16 @@ public:
+         out.eligible=capture_head&&continuous&&fresh_valid&&previous.valid&&previous.source==source&&stamp-previous.stamp<=100000000;
+         if(out.eligible){RigPose seed;
+             out.eligible=whole_pose_seed(rig,previous.world,*capture_head,points,seed);
+-            if(out.eligible){auto alternate=fit_rig_pixels(rig,seed,cameras,pixels,{},0,&fresh.angles);
++            if(out.eligible){
++                RigTemporalPrior prior;prior.reference=seed;
++                // One prespecified setting:20deg per33ms, linear time scaling.
++                // Head compensated orientation; translation remains observation driven.
++                prior.sigma_radians=.35*double(stamp-previous.stamp)/33333333.;
++                const auto* preference=temporal_?&prior:nullptr;
++                if(temporal_)out.fit=fit_rig_pixels(rig,baseline.pose,cameras,pixels,{},0,&fresh.angles,false,preference);
++                auto alternate=fit_rig_pixels(rig,seed,cameras,pixels,{},0,&fresh.angles,false,preference);
+                 out.alternate_cost=alternate.cost;
+-                if(alternate.sufficient&&alternate.cost<baseline.cost){out.fit=alternate;out.used=true;}}
++                if(alternate.sufficient&&alternate.cost<out.fit.cost){out.fit=alternate;out.used=true;}}
+         }
+         // Mutate only after validating/fitting. No failed/stale update refreshes history.
+         last_stamp_[side]=stamp;if(history_[1-side].source==source)history_[1-side]={};history_[side]={};
+diff --git a/apps/frame-hands/native/rig_temporal_prior.h b/apps/frame-hands/native/rig_temporal_prior.h
+new file mode 100644
+--- /dev/null
++++ b/apps/frame-hands/native/rig_temporal_prior.h
+@@ -0,0 +1,28 @@
++#pragma once
++#include "fit_hand_rig.h"
++namespace fhn {
++// Isolated fitting experiment. Preference for recent orientation/articulation,
++// not a visibility, collision, velocity or gesture-confidence estimate.
++struct RigTemporalPrior {
++    RigPose reference{};
++    double sigma_radians=.35,huber=3.;
++    using Residual=std::array<double,23>;
++    void validate(const HandRig& rig,int side)const {
++        if(reference.side!=side||!std::isfinite(sigma_radians)||sigma_radians<.001||!std::isfinite(huber)||huber<=0)
++            throw std::invalid_argument("Invalid temporal pose prior");
++        rig.landmarks(reference.angles,reference.wrist,side);
++    }
++    Residual residual(const RigPose& pose)const {
++        Q d=(pose.wrist.q*reference.wrist.q.inv()).unit();
++        if(d.w<0)d={-d.w,-d.x,-d.y,-d.z}; // Antipodal quaternions represent one rotation.
++        double n=std::sqrt(d.x*d.x+d.y*d.y+d.z*d.z);
++        double scale=n>1e-12?2*std::atan2(n,d.w)/n:2.;
++        Residual r{};r[0]=d.x*scale/sigma_radians;r[1]=d.y*scale/sigma_radians;r[2]=d.z*scale/sigma_radians;
++        for(int j=0;j<20;++j)r[j+3]=(pose.angles[j]-reference.angles[j])/sigma_radians;
++        return r;
++    }
++    static double dot(const Residual& a,const Residual& b){double n=0;for(int j=0;j<23;++j)n+=a[j]*b[j];return n;}
++    double cost(const RigPose& p)const {auto r=residual(p);double n=std::sqrt(dot(r,r));return n<=huber?.5*n*n:huber*(n-.5*huber);}
++    double weight(const Residual& r)const{double n=std::sqrt(dot(r,r));return n>huber?huber/n:1.;}
++};
++}

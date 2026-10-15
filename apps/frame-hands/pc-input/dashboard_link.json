@@ -1,0 +1,16 @@
+{
+  "controller_type": "svl_hand_interaction_augmented",
+  "app_key": "openvr.component.vrcompositor",
+  "name": "Frame Hands pinch dashboard (link hand type)",
+  "description": "Right-hand pointer; left index-thumb pinch clicks. Same dashboard behaviour as the fh_skeletal profile.",
+  "bindings": {
+    "/actions/lasermouse": {
+      "poses": [
+        { "path": "/user/hand/right/pose/raw", "output": "/actions/lasermouse/in/Pointer" }
+      ],
+      "sources": [
+        { "path": "/user/hand/right/input/navigation", "mode": "button", "inputs": { "click": { "output": "/actions/lasermouse/in/leftclick" } } }
+      ]
+    }
+  }
+}

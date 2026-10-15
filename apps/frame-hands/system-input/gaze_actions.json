@@ -1,0 +1,6 @@
+{
+  "action_sets": [{"name": "/actions/main", "usage": "single"}],
+  "actions": [{"name": "/actions/main/in/gaze", "type": "eyetracking", "requirement": "optional"}],
+  "default_bindings": [{"controller_type": "frame_hmd", "binding_url": "bindings_frame_hmd.json"}],
+  "localization": [{"language_tag": "en_US", "/actions/main": "Frame Hands", "/actions/main/in/gaze": "Eye gaze"}]
+}

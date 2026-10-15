@@ -1,0 +1,24 @@
+{
+  "to_controller_type": "fh_skeletal",
+  "layouts": [
+    {
+      "priority": 100,
+      "from_controller_type": "oculus_touch",
+      "simulate_controller_type": true,
+      "simulate_render_model": false,
+      "simulate_HMD": false,
+      "autoremappings": [
+        {
+          "from": "/user/hand/left/input/x",
+          "to": "/user/hand/left/input/a",
+          "mirror": false
+        },
+        {
+          "from": "/user/hand/left/input/y",
+          "to": "/user/hand/left/input/b",
+          "mirror": false
+        }
+      ]
+    }
+  ]
+}

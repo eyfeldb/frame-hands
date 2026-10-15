@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ps1 text eol=crlf
+# Preserve upstream SDK formatting rather than reformat vendored headers.
+apps/frame-hands/system-input/vendor/** -whitespace

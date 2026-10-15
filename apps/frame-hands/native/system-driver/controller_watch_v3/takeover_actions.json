@@ -1,0 +1,28 @@
+{
+  "default_bindings": [
+    {
+      "controller_type": "frame_controller",
+      "binding_url": "takeover_frame_controller.json"
+    }
+  ],
+  "actions": [
+    {
+      "name": "/actions/takeover/in/press",
+      "type": "boolean",
+      "requirement": "mandatory"
+    }
+  ],
+  "action_sets": [
+    {
+      "name": "/actions/takeover",
+      "usage": "leftright"
+    }
+  ],
+  "localization": [
+    {
+      "language_tag": "en_US",
+      "/actions/takeover": "Frame Hands takeover",
+      "/actions/takeover/in/press": "Any button returns Controllers"
+    }
+  ]
+}

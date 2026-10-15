@@ -1,0 +1,15 @@
+name: Source checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python tools/check_source.py
+      - run: python tools/build_driver.py --compiler g++
+      - run: sh apps/frame-hands/native/system-driver/controller_watch_v3/build_source.sh

@@ -1,0 +1,40 @@
+{
+  "controller_type": "fh_skeletal",
+  "app_key": "openvr.component.vrcompositor",
+  "name": "Frame Hands pinch dashboard",
+  "description": "Controller fallback mode only",
+  "bindings": {
+    "/actions/lasermouse": {
+      "sources": [
+        {
+          "path": "/user/hand/left/input/trigger",
+          "mode": "trigger",
+          "inputs": {
+            "click": {
+              "output": "/actions/lasermouse/in/leftclick"
+            }
+          }
+        },
+        {
+          "path": "/user/hand/right/input/trigger",
+          "mode": "trigger",
+          "inputs": {
+            "click": {
+              "output": "/actions/lasermouse/in/leftclick"
+            }
+          }
+        }
+      ],
+      "poses": [
+        {
+          "path": "/user/hand/left/pose/raw",
+          "output": "/actions/lasermouse/in/Pointer"
+        },
+        {
+          "path": "/user/hand/right/pose/raw",
+          "output": "/actions/lasermouse/in/Pointer"
+        }
+      ]
+    }
+  }
+}

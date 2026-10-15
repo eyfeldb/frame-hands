@@ -1,0 +1,141 @@
+diff --git a/apps/frame-hands/native/fit_rig_pixels.h b/apps/frame-hands/native/fit_rig_pixels.h
+index 2a02134..e291ccb 100644
+--- a/apps/frame-hands/native/fit_rig_pixels.h
++++ b/apps/frame-hands/native/fit_rig_pixels.h
+@@ -58,16 +58,23 @@ struct PixelResidual {
+     double dot(const PixelResidual& b)const{return v[0].dot(b.v[0])+v[1].dot(b.v[1]);}
+     double len()const{return std::sqrt(dot(*this));}
+ };
++// Optional experiment masks; default remains all26parameters.
++enum class PixelFitDofs {All, WristOnly, AnglesOnly};
+ struct PixelFitResult {RigPose pose{};int observations=0,iterations=0,updates=0;bool sufficient=false;double initial_cost=0,cost=0,observed_rmse_px=0;};
+-inline PixelFitResult fit_rig_pixels(const HandRig& rig,const RigPose& seed,const std::array<RigCamera,2>& cams,const std::array<PixelObservation,21>& obs,RigFitOptions options={},int projection_mode=0,const std::array<double,20>* angle_reference=nullptr,bool resolve_bounds=false){
++inline PixelFitResult fit_rig_pixels(const HandRig& rig,const RigPose& seed,const std::array<RigCamera,2>& cams,const std::array<PixelObservation,21>& obs,RigFitOptions options={},int projection_mode=0,const std::array<double,20>* angle_reference=nullptr,bool resolve_bounds=false,PixelFitDofs dofs=PixelFitDofs::All){
+     if(projection_mode<0||projection_mode>2)throw std::invalid_argument("Invalid projection derivative mode");
++    if(dofs!=PixelFitDofs::All&&dofs!=PixelFitDofs::WristOnly&&dofs!=PixelFitDofs::AnglesOnly)throw std::invalid_argument("Invalid pixel fit degrees of freedom");
+     bool analytic_projection=projection_mode!=0;
++    auto step=[&](const RigPose& p,const std::array<double,26>& d){auto result=rig_step(rig,p,d);
++        if(dofs==PixelFitDofs::AnglesOnly)result.wrist=p.wrist;
++        if(dofs==PixelFitDofs::WristOnly)result.angles=p.angles;
++        return result;};
+     const auto& prior=angle_reference?*angle_reference:seed.angles;
+     for(int i=0;i<20;++i)if(!std::isfinite(prior[i])||prior[i]<rig.joints[i].lower-1e-8||prior[i]>rig.joints[i].upper+1e-8)throw std::invalid_argument("Invalid angle prior reference");
+     if(options.iterations<1||options.iterations>100||!std::isfinite(options.huber)||options.huber<=0||!std::isfinite(options.angle_prior)||options.angle_prior<0)throw std::invalid_argument("Invalid fitting options");
+     auto points=rig.landmarks(seed.angles,seed.wrist,seed.side);for(auto& c:cams)c.validate();PixelFitResult out;out.pose=seed;
+     for(auto& o:obs){o.validate();if(o.present[0]&&o.present[1])++out.observations;}
+-    if(out.observations<6)return out;out.sufficient=true; // Count gate only, not an observability/visibility verdict.
++    if(out.observations<(dofs==PixelFitDofs::WristOnly?5:6))return out;out.sufficient=true; // Count gate only, not an observability/visibility verdict.
+     auto residuals=[&](const std::array<V,21>& points,std::array<PixelResidual,21>& r){
+         for(int i=0;i<21;++i)for(int v=0;v<2;++v)if(obs[i].present[v]){V uv;if(!cams[v].project(points[i],uv))return false;r[i].v[v]=(uv-V{obs[i].point[v].x,obs[i].point[v].y,0})*(1/obs[i].sigma[v]);}return true;};
+     auto cost=[&](const RigPose& p,const std::array<PixelResidual,21>& r){double value=0;for(auto& x:r){double n=x.len();value+=n<=options.huber?.5*n*n:options.huber*(n-.5*options.huber);}for(int i=0;i<20;++i){double d=p.angles[i]-prior[i];value+=.5*options.angle_prior*d*d;}return value;};
+@@ -76,18 +83,18 @@ inline PixelFitResult fit_rig_pixels(const HandRig& rig,const RigPose& seed,cons
+     for(int iteration=0;iteration<options.iterations;++iteration){out.iterations=iteration+1;double H[26][26]{},g[26]{};std::array<std::array<PixelResidual,21>,26> jac{};bool derivative_valid=true;
+         std::array<std::array<std::array<V,2>,2>,21> camera_jac{};
+         if(analytic_projection){for(int i=0;i<21;++i)for(int v=0;v<2;++v)if(obs[i].present[v]&&!cams[v].projection_jacobian(points[i],camera_jac[i][v]))derivative_valid=false;if(!derivative_valid)break;}
+-        for(int j=0;j<26;++j){std::array<double,26>d{};double h=j<3?.01:1e-5;
++        for(int j=0;j<26;++j){if((dofs==PixelFitDofs::WristOnly&&j>=6)||(dofs==PixelFitDofs::AnglesOnly&&j<6))continue;std::array<double,26>d{};double h=j<3?.01:1e-5;
+             if(j>=6&&out.pose.angles[j-6]+h>rig.joints[j-6].upper)h=-h;if(j>=6&&out.pose.angles[j-6]+h<rig.joints[j-6].lower)continue;
+-            d[j]=h;auto trial=rig_step(rig,out.pose,d);auto y=rig.landmarks(trial.angles,trial.wrist,trial.side);std::array<PixelResidual,21> r{};
++            d[j]=h;auto trial=step(out.pose,d);auto y=rig.landmarks(trial.angles,trial.wrist,trial.side);std::array<PixelResidual,21> r{};
+             if(analytic_projection&&!(projection_mode==2&&j<3)){for(int i=0;i<21;++i){V displacement=(y[i]-points[i])*(1/h);for(int v=0;v<2;++v)if(obs[i].present[v])jac[j][i].v[v]={camera_jac[i][v][0].dot(displacement)/obs[i].sigma[v],camera_jac[i][v][1].dot(displacement)/obs[i].sigma[v],0};}}
+             else{if(!residuals(y,r)){derivative_valid=false;break;}for(int i=0;i<21;++i)jac[j][i]=(r[i]-residual[i])*(1/h);}
+         }
+         if(!derivative_valid)break; // Retain last valid pose; caller must inspect residual quality.
+         for(int i=0;i<21;++i){auto r=residual[i];double n=r.len(),w=n>options.huber?options.huber/n:1.;for(int j=0;j<26;++j){g[j]+=w*jac[j][i].dot(r);for(int k=0;k<=j;++k)H[j][k]+=w*jac[j][i].dot(jac[k][i]);}}
+-        for(int j=0;j<20;++j){H[j+6][j+6]+=options.angle_prior;g[j+6]+=options.angle_prior*(out.pose.angles[j]-prior[j]);}
++        if(dofs!=PixelFitDofs::WristOnly)for(int j=0;j<20;++j){H[j+6][j+6]+=options.angle_prior;g[j+6]+=options.angle_prior*(out.pose.angles[j]-prior[j]);}
+         for(int j=0;j<26;++j){for(int k=0;k<j;++k)H[k][j]=H[j][k];H[j][j]+=damping*std::max(1e-6,H[j][j]);g[j]=-g[j];}
+         std::array<double,26>d{};bool solved=resolve_bounds?rig_solve_feasible(H,g,rig,out.pose,d):rig_solve(H,g,d);if(!solved){damping*=10;continue;}double fraction=1.;for(int j=0;j<26;++j){double limit=j<3?20.:(j<6?.25:.35);if(std::abs(d[j])>limit)fraction=std::min(fraction,limit/std::abs(d[j]));}for(auto& x:d)x*=fraction;
+-        auto trial=rig_step(rig,out.pose,d);auto y=rig.landmarks(trial.angles,trial.wrist,trial.side);std::array<PixelResidual,21> r{};
++        auto trial=step(out.pose,d);auto y=rig.landmarks(trial.angles,trial.wrist,trial.side);std::array<PixelResidual,21> r{};
+         double value=residuals(y,r)?cost(trial,r):std::numeric_limits<double>::infinity();
+         if(std::isfinite(value)&&value<out.cost){double improvement=out.cost-value;out.pose=trial;points=y;residual=r;out.cost=value;++out.updates;damping=std::max(1e-9,damping*.3);if(improvement<1e-9)break;}
+         else{damping*=10;if(damping>1e10)break;}
+diff --git a/apps/frame-hands/native/fit_palm_root.h b/apps/frame-hands/native/fit_palm_root.h
+new file mode 100644
+--- /dev/null
++++ b/apps/frame-hands/native/fit_palm_root.h
+@@ -0,0 +1,12 @@
++#pragma once
++#include "fit_rig_pixels.h"
++namespace fhn {
++// Isolated current-stereo root estimate. No temporal hold or input confidence.
++inline PixelFitResult fit_palm_root(const HandRig& rig,const RigPose& seed,
++    const std::array<RigCamera,2>& cameras,const std::array<PixelObservation,21>& observations){
++    for(const auto& o:observations)o.validate();std::array<PixelObservation,21> palm{};
++    for(int i:{5,8,11,14,17})palm[i]=observations[i];
++    RigFitOptions options;options.iterations=20;options.angle_prior=0;
++    return fit_rig_pixels(rig,seed,cameras,palm,options,0,nullptr,false,PixelFitDofs::WristOnly);
++}
++}
+diff --git a/apps/frame-hands/native/probe_palm_anchor.cpp b/apps/frame-hands/native/probe_palm_anchor.cpp
+new file mode 100644
+--- /dev/null
++++ b/apps/frame-hands/native/probe_palm_anchor.cpp
+@@ -0,0 +1,27 @@
++#include "fit_palm_root.h"
++#include "rig_fit_quality.h"
++#include <chrono>
++#include <fstream>
++#include <iostream>
++#include <iomanip>
++int main(int argc,char**argv){try{
++ if(argc!=6)return 2;std::ifstream l(argv[1]),r(argv[2]),c(argv[3]),input(argv[4]);if(std::ifstream(argv[5]).good())return 3;
++ std::array<fhn::HandRig,2> rigs{fhn::HandRig::load(l),fhn::HandRig::load(r)};auto cameras=fhn::load_rig_cameras(c);std::ofstream out(argv[5]);out<<std::setprecision(17);fhn::RigPose seed;int count=0;
++ while(input>>seed.side){if(seed.side<0||seed.side>1)return 4;
++  if(!(input>>seed.wrist.q.w>>seed.wrist.q.x>>seed.wrist.q.y>>seed.wrist.q.z>>seed.wrist.t.x>>seed.wrist.t.y>>seed.wrist.t.z))return 4;
++  for(auto& x:seed.angles)if(!(input>>x))return 4;std::array<fhn::PixelObservation,21> obs{};
++  for(auto& o:obs)for(int v=0;v<2;++v){int present;if(!(input>>present>>o.point[v].x>>o.point[v].y>>o.sigma[v])||present<0||present>1)return 4;o.present[v]=present;}
++  const auto& rig=rigs[seed.side];auto t0=std::chrono::steady_clock::now();auto root=fhn::fit_palm_root(rig,seed,cameras,obs);auto t1=std::chrono::steady_clock::now();
++  if(!root.sufficient||root.pose.angles!=seed.angles||root.cost>root.initial_cost)throw std::runtime_error("Root contract failed");
++  auto anchored=fhn::fit_rig_pixels(rig,root.pose,cameras,obs,{},0,&seed.angles,false,fhn::PixelFitDofs::AnglesOnly);auto t2=std::chrono::steady_clock::now();
++  auto continued=fhn::fit_rig_pixels(rig,seed,cameras,obs);auto t3=std::chrono::steady_clock::now();
++  if(anchored.pose.wrist.q.w!=root.pose.wrist.q.w||anchored.pose.wrist.q.x!=root.pose.wrist.q.x||anchored.pose.wrist.q.y!=root.pose.wrist.q.y||anchored.pose.wrist.q.z!=root.pose.wrist.q.z||(anchored.pose.wrist.t-root.pose.wrist.t).len()!=0)throw std::runtime_error("Frozen root changed");
++  auto us=[](auto a,auto b){return std::chrono::duration<double,std::micro>(b-a).count();};out<<count<<' '<<us(t0,t1)<<' '<<us(t1,t2)<<' '<<us(t2,t3)<<' '<<root.initial_cost<<' '<<root.cost;
++  for(const auto* p:std::array<const fhn::RigPose*,3>{&seed,&continued.pose,&anchored.pose}){auto quality=fhn::rig_fit_quality(rig,*p,cameras,obs);if(!quality.projectable)throw std::runtime_error("Behind camera");
++   out<<' '<<quality.all.rmse_px()<<' '<<quality.palm.rmse_px()<<' '<<quality.fingers.rmse_px()<<' '<<p->wrist.q.w<<' '<<p->wrist.q.x<<' '<<p->wrist.q.y<<' '<<p->wrist.q.z<<' '<<p->wrist.t.x<<' '<<p->wrist.t.y<<' '<<p->wrist.t.z;
++   for(double angle:p->angles)out<<' '<<angle;for(const auto& point:rig.landmarks(p->angles,p->wrist,p->side))out<<' '<<point.x<<' '<<point.y<<' '<<point.z;
++  }
++  out<<'\n';++count;
++ }
++ if(!count||!input.eof()||!out.good())return 5;std::cout<<"palm_poses="<<count<<'\n';return 0;
++}catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}
+diff --git a/apps/frame-hands/native/test_palm_anchor.cpp b/apps/frame-hands/native/test_palm_anchor.cpp
+new file mode 100644
+--- /dev/null
++++ b/apps/frame-hands/native/test_palm_anchor.cpp
+@@ -0,0 +1,34 @@
++#include "fit_palm_root.h"
++#include "whole_pose_seed.h"
++#include <fstream>
++#include <iomanip>
++#include <iostream>
++#include <random>
++int main(int argc,char**argv){try{
++ if(argc!=5)return 2;std::ifstream l(argv[1]),r(argv[2]),c(argv[3]);if(std::ifstream(argv[4]).good())return 3;
++ std::array<fhn::HandRig,2> rigs{fhn::HandRig::load(l),fhn::HandRig::load(r)};auto cameras=fhn::load_rig_cameras(c);std::ofstream out(argv[4]);out<<std::setprecision(17);
++ std::mt19937 random(100517);std::normal_distribution<double> noise(0,1);int cases=0,checks=0;
++ auto check=[&](bool value){if(!value)throw std::runtime_error("Palm control failed");++checks;};
++ for(int side=0;side<2;++side)for(int gesture=0;gesture<4;++gesture)for(int rotation=0;rotation<3;++rotation)for(int mode=0;mode<4;++mode){
++  const auto& rig=rigs[side];fhn::RigPose truth;truth.side=side;truth.wrist={fhn::rig_exp({.3*rotation,.2*rotation,-.4*rotation}),{side?70.:-70.,15.,-450.}};
++  for(int j=0;j<20;++j){double fraction=gesture==0?.15:.8;if((gesture==2||gesture==3)&&j/4==1)fraction=.15;if(gesture==3&&j/4==2)fraction=.15;truth.angles[j]=(1-fraction)*rig.joints[j].lower+fraction*rig.joints[j].upper;}
++  auto points=rig.landmarks(truth.angles,truth.wrist,side);std::array<fhn::PixelObservation,21> obs{};
++  for(int i=0;i<20;++i)for(int v=0;v<2;++v){check(cameras[v].project(points[i],obs[i].point[v]));obs[i].present[v]=true;
++   bool palm=i==5||i==8||i==11||i==14||i==17;
++   if(mode==3||(mode==1&&palm)){obs[i].point[v].x+=2*noise(random);obs[i].point[v].y+=2*noise(random);}
++   if(mode==2&&!palm){obs[i].point[v].x+=20;obs[i].point[v].y-=15;}
++  }
++  auto seed=truth;seed.wrist.t=seed.wrist.t+fhn::V{6,-4,8};seed.wrist.q=(fhn::rig_exp({.08,-.12,.07})*seed.wrist.q).unit();
++  auto root=fhn::fit_palm_root(rig,seed,cameras,obs);check(root.sufficient&&root.cost<=root.initial_cost&&root.pose.angles==seed.angles);
++  auto articulated=fhn::fit_rig_pixels(rig,root.pose,cameras,obs,{},0,&seed.angles,false,fhn::PixelFitDofs::AnglesOnly);
++  check(articulated.pose.wrist.q.w==root.pose.wrist.q.w&&articulated.pose.wrist.q.x==root.pose.wrist.q.x&&articulated.pose.wrist.q.y==root.pose.wrist.q.y&&articulated.pose.wrist.q.z==root.pose.wrist.q.z&&(articulated.pose.wrist.t-root.pose.wrist.t).len()==0);
++  auto control=fhn::fit_rig_pixels(rig,seed,cameras,obs);out<<side<<' '<<gesture<<' '<<rotation<<' '<<mode;
++  for(const auto* fit:std::array<const fhn::PixelFitResult*,2>{&control,&articulated}){auto fitted=rig.landmarks(fit->pose.angles,fit->pose.wrist,side);double error=0;for(int i=0;i<21;++i){auto e=fitted[i]-points[i];error+=e.dot(e);}auto q=(fit->pose.wrist.q*truth.wrist.q.inv()).unit();double degrees=2*std::acos(std::clamp(std::abs(q.w),0.,1.))*180/3.141592653589793;
++   out<<' '<<(fit->pose.wrist.t-truth.wrist.t).len()<<' '<<degrees<<' '<<std::sqrt(error/21);
++  }
++  out<<'\n';
++  if(mode==0||mode==2){check((root.pose.wrist.t-truth.wrist.t).len()<1e-4);auto q=(root.pose.wrist.q*truth.wrist.q.inv()).unit();check(std::abs(q.w)>1-1e-10);}
++  obs[5].present[1]=false;check(!fhn::fit_palm_root(rig,seed,cameras,obs).sufficient);++cases;
++ }
++ if(!out.good())return 5;std::cout<<"cases="<<cases<<" checks="<<checks<<" failures=0\n";return 0;
++}catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

@@ -1,0 +1,14 @@
+[Unit]
+Description=Frame Hands native dashboard toggle
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/devkit-game/FrameHandsDashboard-v1/service.py
+WorkingDirectory=%h/devkit-game/FrameHandsDashboard-v1
+UMask=0077
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

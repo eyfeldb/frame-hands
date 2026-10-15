@@ -1,0 +1,179 @@
+{
+  "name": "Frame Hands optical skeletons for Maestro",
+  "controller_type": "fh_skeletal",
+  "last_edited_by": "UnrealEngine",
+  "bindings": {
+    "/actions/main": {
+      "sources": [
+        {
+          "mode": "trigger",
+          "path": "/user/hand/left/input/grip",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Left_Grip"
+            }
+          }
+        },
+        {
+          "mode": "joystick",
+          "path": "/user/hand/left/input/joystick",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Left_Stick"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/left/input/application_menu",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Left_System"
+            }
+          }
+        },
+        {
+          "mode": "trigger",
+          "path": "/user/hand/left/input/trigger",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Left_Trigger"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/left/input/a",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Left_X"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/left/input/b",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Left_Y"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/right/input/a",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Right_A"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/right/input/b",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Right_B"
+            }
+          }
+        },
+        {
+          "mode": "trigger",
+          "path": "/user/hand/right/input/grip",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Right_Grip"
+            }
+          }
+        },
+        {
+          "mode": "joystick",
+          "path": "/user/hand/right/input/joystick",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Right_Stick"
+            }
+          }
+        },
+        {
+          "mode": "trigger",
+          "path": "/user/hand/right/input/trigger",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Right_Trigger"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/left/input/application_menu",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/PauseMenu"
+            }
+          }
+        },
+        {
+          "mode": "joystick",
+          "path": "/user/hand/left/input/joystick",
+          "inputs": {
+            "position": {
+              "output": "/actions/main/in/JJHMD_Left_Stick_X,JJHMD_Left_Stick_Y X Y_axis2d"
+            }
+          }
+        },
+        {
+          "mode": "joystick",
+          "path": "/user/hand/right/input/joystick",
+          "inputs": {
+            "position": {
+              "output": "/actions/main/in/JJHMD_Right_Stick_X,JJHMD_Right_Stick_Y X Y_axis2d"
+            }
+          }
+        },
+        {
+          "mode": "button",
+          "path": "/user/hand/right/input/system",
+          "inputs": {
+            "click": {
+              "output": "/actions/main/in/JJHMD_Right_System"
+            }
+          }
+        }
+      ],
+      "poses": [
+        {
+          "output": "/actions/main/in/controllerleft",
+          "path": "/user/hand/left/pose/raw",
+          "requirement": "optional"
+        },
+        {
+          "output": "/actions/main/in/controllerright",
+          "path": "/user/hand/right/pose/raw"
+        }
+      ],
+      "skeleton": [
+        {
+          "output": "/actions/main/in/skeletonleft",
+          "path": "/user/hand/left/input/skeleton/left"
+        },
+        {
+          "output": "/actions/main/in/skeletonright",
+          "path": "/user/hand/right/input/skeleton/right"
+        }
+      ],
+      "haptics": [
+        {
+          "output": "/actions/main/out/vibrateleft",
+          "path": "/user/hand/left/output/haptic"
+        },
+        {
+          "output": "/actions/main/out/vibrateright",
+          "path": "/user/hand/right/output/haptic"
+        }
+      ]
+    }
+  },
+  "description": "Native hand skeletons; optional controller fallback.",
+  "app_key": "steam.app.2701700"
+}

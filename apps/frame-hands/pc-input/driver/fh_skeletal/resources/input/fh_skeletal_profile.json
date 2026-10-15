@@ -1,0 +1,74 @@
+{
+  "jsonid": "input_profile",
+  "controller_type": "fh_skeletal",
+  "device_class": "TrackedDeviceClass_Controller",
+  "resource_root": "fh_skeletal",
+  "driver_name": "fh_skeletal",
+  "input_bindingui_mode": "controller_handed",
+  "should_show_binding_errors": true,
+  "input_source": {
+    "/input/trigger": {
+      "type": "trigger",
+      "click": true,
+      "value": true
+    },
+    "/input/grip": {
+      "type": "trigger",
+      "click": true,
+      "value": true
+    },
+    "/input/a": {
+      "type": "button",
+      "click": true
+    },
+    "/input/b": {
+      "type": "button",
+      "click": true
+    },
+    "/input/application_menu": {
+      "type": "button",
+      "click": true
+    },
+    "/input/system": {
+      "type": "button",
+      "click": true
+    },
+    "/input/joystick": {
+      "type": "joystick",
+      "click": true
+    },
+    "/pose/raw": {
+      "type": "pose"
+    },
+    "/pose/tip": {
+      "type": "pose"
+    },
+    "/pose/grip": {
+      "type": "pose"
+    },
+    "/input/skeleton/left": {
+      "type": "skeleton",
+      "side": "left",
+      "skeleton": "/skeleton/hand/left"
+    },
+    "/input/skeleton/right": {
+      "type": "skeleton",
+      "side": "right",
+      "skeleton": "/skeleton/hand/right"
+    },
+    "/output/haptic": {
+      "type": "vibration"
+    }
+  },
+  "default_bindings": [
+    {
+      "app_key": "steam.app.2701700",
+      "binding_url": "maestro.json"
+    },
+    {
+      "app_key": "openvr.component.vrcompositor",
+      "binding_url": "dashboard.json"
+    }
+  ],
+  "remapping": "{fh_skeletal}/input/remapping.json"
+}

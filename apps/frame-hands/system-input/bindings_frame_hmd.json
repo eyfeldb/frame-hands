@@ -1,0 +1,11 @@
+{
+  "action_manifest_version": 0,
+  "controller_type": "frame_hmd",
+  "description": "Frame Hands public eye input",
+  "name": "Frame Hands gaze",
+  "bindings": {
+    "/actions/main": {
+      "eyetracking": [{"path": "/user/head/eyetracking", "output": "/actions/main/in/gaze"}]
+    }
+  }
+}

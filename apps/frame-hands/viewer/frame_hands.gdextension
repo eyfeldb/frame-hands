@@ -1,0 +1,8 @@
+[configuration]
+entry_symbol = "frame_hands_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+linux.release.arm64 = "res://libframe_hands.so"
+linux.debug.arm64 = "res://libframe_hands.so"
